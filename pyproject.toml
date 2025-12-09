@@ -1,0 +1,27 @@
+[project]
+name = "tls-snoop"
+version = "0.1.0"
+description = "eBPF-based TLS handshake capture tool"
+requires-python = ">=3.10"
+license = { text = "GPL-2.0" }
+authors = [{ name = "zarak", email = "zarak.tls@zarak.fr" }]
+
+dependencies = [
+    "click>=8.0.0",
+    "prometheus-client>=0.17.0",
+    "scapy>=2.5.0",
+    "pyroute2>=0.7.0",
+]
+
+[project.scripts]
+tls-snoop = "tls_snoop:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+]

@@ -1,0 +1,15 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    remove|upgrade|deconfigure)
+        # Stop the service before removal
+        if systemctl is-active --quiet tls-snoop.service; then
+            systemctl stop tls-snoop.service || true
+        fi
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

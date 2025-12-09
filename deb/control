@@ -1,0 +1,13 @@
+Package: tls-snoop
+Version: VERSION_PLACEHOLDER
+Section: net
+Priority: optional
+Architecture: amd64
+Maintainer: zarak <zarak.tls@zarak.fr>
+Depends: python3 (>= 3.10), python3-click, python3-scapy, python3-pyroute2, python3-prometheus-client, bpfcc-tools
+Homepage: https://github.com/fayak/tls-snoop
+Description: eBPF-based TLS handshake capture daemon
+ TLS Snoop uses eBPF/TC hooks to capture TLS Client Hello and Server Hello
+ messages from network traffic. It outputs transaction metadata as NDJSON
+ and exposes Prometheus metrics for monitoring TLS version and cipher
+ suite usage across your network.

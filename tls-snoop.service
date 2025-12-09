@@ -1,0 +1,33 @@
+[Unit]
+Description=TLS Snoop - eBPF TLS handshake capture daemon
+After=network.target
+Documentation=https://github.com/fayak/tls-snoop
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/tls-snoop/tls-snoop.conf
+
+# Python unbuffered output for immediate logging
+Environment=PYTHONUNBUFFERED=1
+
+# Provide config/cache directories for Scapy (it needs XDG directories)
+Environment=HOME=/var/lib/tls-snoop
+Environment=XDG_CONFIG_HOME=/var/lib/tls-snoop/.config
+Environment=XDG_CACHE_HOME=/var/cache/tls-snoop
+
+ExecStartPre=/usr/bin/mkdir -p /var/lib/tls-snoop/.config /var/cache/tls-snoop /var/log/tls-snoop
+ExecStart=/usr/bin/python -m tls_snoop $TLS_SNOOP_OPTS
+ExecReload=/bin/kill -USR1 $MAINPID
+
+Restart=on-failure
+RestartSec=5
+
+# Security hardening
+ProtectSystem=full
+ProtectHome=read-only
+PrivateTmp=yes
+NoNewPrivileges=no
+ReadWritePaths=/var/lib/tls-snoop /var/cache/tls-snoop /var/log/tls-snoop
+
+[Install]
+WantedBy=multi-user.target

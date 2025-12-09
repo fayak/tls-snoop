@@ -1,0 +1,8 @@
+#!/usr/bin/env python3
+"""TLS Snoop - eBPF-based TLS handshake capture tool."""
+
+import sys
+from tls_snoop.__main__ import main
+
+if __name__ == "__main__":
+    sys.exit(main())
