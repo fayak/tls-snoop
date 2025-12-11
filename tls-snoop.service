@@ -22,12 +22,11 @@ ExecReload=/bin/kill -USR1 $MAINPID
 Restart=on-failure
 RestartSec=5
 
-# Security hardening
+# Security hardening (ProtectSystem=full allows writes to /var)
 ProtectSystem=full
 ProtectHome=read-only
 PrivateTmp=yes
 NoNewPrivileges=no
-ReadWritePaths=/var/lib/tls-snoop /var/cache/tls-snoop /var/log/tls-snoop
 
 [Install]
 WantedBy=multi-user.target
