@@ -11,7 +11,7 @@ from scapy.layers.tls.record import TLS
 from scapy.layers.tls.handshake import TLSClientHello, TLSServerHello
 
 from .metrics import record_handshake
-from .parsers import get_tls_version_str, get_cipher_suite_name
+from .parsers import get_tls_version_str, get_cipher_suite_name, get_named_group
 
 
 @dataclass
@@ -22,6 +22,7 @@ class ClientHelloData:
     payload_len: int
     cipher_suites_offered: list[str]
     extensions: list[str]
+    supported_groups: list[str]
     sni: str | None = None
 
 
@@ -39,6 +40,7 @@ class TransactionData:
     cipher_suite: str
     compression: str
     server_extensions: list[str]
+    key_share_group: str | None = None
 
 
 # Connection key: (client_ip, client_port, server_ip, server_port)
@@ -118,6 +120,7 @@ class TransactionTracker:
             cipher_suite=server_data["cipher_suite"],
             compression=server_data["compression"],
             server_extensions=server_data["extensions"],
+            key_share_group=server_data["key_share_group"],
         )
 
         self._record_transaction(transaction)
@@ -140,6 +143,7 @@ class TransactionTracker:
 
         # Extract extensions
         extensions = []
+        supported_groups = []
         sni = None
         if hasattr(msg, "ext") and msg.ext:
             for ext in msg.ext:
@@ -154,11 +158,21 @@ class TransactionTracker:
                                 sni = sn.servername.decode("utf-8", errors="ignore")
                                 break
 
+                # Extract supported groups (named curves / key exchange groups)
+                if "SupportedGroups" in ext.__class__.__name__ or "EllipticCurves" in ext.__class__.__name__:
+                    for attr in ["groups", "named_group_list", "elliptic_curves"]:
+                        if hasattr(ext, attr):
+                            groups = getattr(ext, attr)
+                            if groups:
+                                supported_groups = [get_named_group(g) for g in groups]
+                            break
+
         return ClientHelloData(
             timestamp=time.time(),
             payload_len=len(payload),
             cipher_suites_offered=cipher_suites,
             extensions=extensions,
+            supported_groups=supported_groups,
             sni=sni,
         )
 
@@ -205,12 +219,31 @@ class TransactionTracker:
             else:
                 compression = f"0x{comp_val:02x}"
 
-        # Extract extensions
+        # Extract extensions and key_share group
         extensions = []
+        key_share_group = None
         if hasattr(msg, "ext") and msg.ext:
-            extensions = [
-                ext.__class__.__name__.replace("TLS_Ext_", "") for ext in msg.ext
-            ]
+            for ext in msg.ext:
+                extensions.append(ext.__class__.__name__.replace("TLS_Ext_", ""))
+
+                # Extract key share group from Server Hello
+                if "KeyShare" in ext.__class__.__name__:
+                    # Try different attribute names for the selected group
+                    for attr in ["server_share", "selected_group", "group"]:
+                        if hasattr(ext, attr):
+                            share = getattr(ext, attr)
+                            if share:
+                                # Could be the share object or the group directly
+                                if hasattr(share, "group"):
+                                    key_share_group = get_named_group(share.group)
+                                elif isinstance(share, int):
+                                    key_share_group = get_named_group(share)
+                            break
+                    # Also check if there's a direct 'group' attribute on the extension
+                    if not key_share_group and hasattr(ext, "group"):
+                        group = ext.group
+                        if isinstance(group, int):
+                            key_share_group = get_named_group(group)
 
         return {
             "payload_len": len(payload),
@@ -218,6 +251,7 @@ class TransactionTracker:
             "cipher_suite": cipher_suite,
             "compression": compression,
             "extensions": extensions,
+            "key_share_group": key_share_group,
         }
 
     def _find_handshake_message(self, tls_packet, msg_type):
@@ -246,6 +280,8 @@ class TransactionTracker:
             cipher_suites_offered=transaction.client_hello.cipher_suites_offered,
             client_extensions=transaction.client_hello.extensions,
             server_extensions=transaction.server_extensions,
+            supported_groups=transaction.client_hello.supported_groups,
+            key_share_group=transaction.key_share_group,
         )
 
         # Write to JSON file if configured
@@ -263,8 +299,10 @@ class TransactionTracker:
             "server_hello_payload_len": transaction.server_hello_payload_len,
             "tls_version": transaction.tls_version,
             "cipher_suite": transaction.cipher_suite,
+            "key_share_group": transaction.key_share_group,
             "compression": transaction.compression,
             "cipher_suites_offered": transaction.client_hello.cipher_suites_offered,
+            "supported_groups": transaction.client_hello.supported_groups,
             "client_extensions": transaction.client_hello.extensions,
             "server_extensions": transaction.server_extensions,
         }

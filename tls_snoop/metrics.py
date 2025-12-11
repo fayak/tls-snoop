@@ -30,6 +30,20 @@ tls_server_extensions_total = Counter(
     ["extension"],
 )
 
+# Counter for supported groups offered by clients (for key exchange)
+tls_supported_groups_offered_total = Counter(
+    "tls_supported_groups_offered_total",
+    "Total number of times each key exchange group was offered by clients",
+    ["group"],
+)
+
+# Counter for key share groups selected by servers
+tls_key_share_selected_total = Counter(
+    "tls_key_share_selected_total",
+    "Total number of times each key exchange group was selected by servers",
+    ["group"],
+)
+
 
 def start_metrics_server(host: str, port: int) -> None:
     """Start the Prometheus metrics HTTP server."""
@@ -42,6 +56,8 @@ def record_handshake(
     cipher_suites_offered: list[str],
     client_extensions: list[str],
     server_extensions: list[str],
+    supported_groups: list[str],
+    key_share_group: str | None,
 ) -> None:
     """Record metrics for a completed TLS handshake."""
     # Record the handshake with version and selected cipher
@@ -61,3 +77,11 @@ def record_handshake(
     # Record server extensions
     for ext in server_extensions:
         tls_server_extensions_total.labels(extension=ext).inc()
+
+    # Record supported groups offered by client
+    for group in supported_groups:
+        tls_supported_groups_offered_total.labels(group=group).inc()
+
+    # Record key share group selected by server
+    if key_share_group:
+        tls_key_share_selected_total.labels(group=key_share_group).inc()

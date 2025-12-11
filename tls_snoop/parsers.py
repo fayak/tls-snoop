@@ -88,6 +88,50 @@ _extra_cipher_suites = {
 # Merge Scapy's database with our extras
 CIPHER_SUITES = {**_scapy_cipher_suites, **_extra_cipher_suites}
 
+# TLS Named Groups (for key exchange) - RFC 8446, RFC 7919, and post-quantum
+NAMED_GROUPS = {
+    # Elliptic Curve Groups (ECDHE)
+    0x0017: "secp256r1",
+    0x0018: "secp384r1",
+    0x0019: "secp521r1",
+    0x001D: "x25519",
+    0x001E: "x448",
+    # Finite Field Groups (DHE) - RFC 7919
+    0x0100: "ffdhe2048",
+    0x0101: "ffdhe3072",
+    0x0102: "ffdhe4096",
+    0x0103: "ffdhe6144",
+    0x0104: "ffdhe8192",
+    # Post-Quantum Hybrid Groups (Kyber/ML-KEM)
+    0x6399: "x25519_kyber768",
+    0x639A: "secp256r1_kyber768",
+    # Post-Quantum ML-KEM (NIST standardized)
+    0x0200: "mlkem512",
+    0x0201: "mlkem768",
+    0x0202: "mlkem1024",
+    # Hybrid ML-KEM (draft-ietf-tls-ml-kem-key-agreement)
+    0x11EB: "secp256r1_mlkem768",
+    0x11EC: "x25519_mlkem768",
+    0x11ED: "secp384r1_mlkem1024",
+    # Older Kyber drafts (may still be seen)
+    0x023A: "kyber512",
+    0x023B: "kyber768",
+    0x023C: "kyber1024",
+    0x2F3A: "x25519_kyber512",
+    0x2F3B: "secp256r1_kyber512",
+    0x2F3C: "x25519_kyber768_draft",
+    0x2F3D: "secp256r1_kyber768_draft",
+    0x2F3E: "secp384r1_kyber768",
+    0x2F3F: "x448_kyber768",
+}
+
+
+def get_named_group(group_id: int) -> str:
+    """Convert named group ID to human-readable name."""
+    if is_grease_value(group_id):
+        return "GREASE"
+    return NAMED_GROUPS.get(group_id, f"0x{group_id:04X}")
+
 
 def get_tls_version_str(version: int) -> str:
     """Convert TLS version number to human-readable string."""
