@@ -75,7 +75,7 @@ def _handle_sigusr1(signum: int, frame) -> None:
 )
 @click.option(
     "--metrics-host",
-    default="localhost",
+    default="127.0.0.1",
     show_default=True,
     help="Host to bind metrics server to.",
 )
@@ -140,7 +140,12 @@ def main(
 
     # Start metrics server if enabled
     if metrics:
-        start_metrics_server(metrics_host, metrics_port)
+        try:
+            start_metrics_server(metrics_host, metrics_port)
+            if not quiet:
+                click.echo(f"Metrics server started on http://{metrics_host}:{metrics_port}/metrics")
+        except Exception as e:
+            raise click.ClickException(f"Failed to start metrics server: {e}")
 
     # Write PID file
     if pidfile:
