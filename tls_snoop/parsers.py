@@ -90,10 +90,39 @@ CIPHER_SUITES = {**_scapy_cipher_suites, **_extra_cipher_suites}
 
 # TLS Named Groups (for key exchange) - RFC 8446, RFC 7919, and post-quantum
 NAMED_GROUPS = {
-    # Elliptic Curve Groups (ECDHE)
+    # Legacy/Binary Elliptic Curves (rarely used)
+    0x0001: "sect163k1",
+    0x0002: "sect163r1",
+    0x0003: "sect163r2",
+    0x0004: "sect193r1",
+    0x0005: "sect193r2",
+    0x0006: "sect233k1",
+    0x0007: "sect233r1",
+    0x0008: "sect239k1",
+    0x0009: "sect283k1",
+    0x000A: "sect283r1",
+    0x000B: "sect409k1",
+    0x000C: "sect409r1",
+    0x000D: "sect571k1",
+    0x000E: "sect571r1",
+    0x000F: "secp160k1",
+    0x0010: "secp160r1",
+    0x0011: "secp160r2",
+    0x0012: "secp192k1",
+    0x0013: "secp192r1",
+    0x0014: "secp224k1",
+    0x0015: "secp224r1",
+    # secp256k1 - used by Bitcoin/Ethereum
+    0x0016: "secp256k1",
+    # NIST Prime Curves (commonly used)
     0x0017: "secp256r1",
     0x0018: "secp384r1",
     0x0019: "secp521r1",
+    # Brainpool Curves (RFC 7027)
+    0x001A: "brainpoolP256r1",
+    0x001B: "brainpoolP384r1",
+    0x001C: "brainpoolP512r1",
+    # Modern Curves
     0x001D: "x25519",
     0x001E: "x448",
     # Finite Field Groups (DHE) - RFC 7919
