@@ -16,7 +16,7 @@ Environment=XDG_CONFIG_HOME=/var/lib/tls-snoop/.config
 Environment=XDG_CACHE_HOME=/var/cache/tls-snoop
 
 ExecStartPre=/usr/bin/mkdir -p /var/lib/tls-snoop/.config /var/cache/tls-snoop /var/log/tls-snoop
-ExecStart=/usr/bin/python -m tls_snoop $TLS_SNOOP_OPTS
+ExecStart=/usr/bin/python3 -m tls_snoop $TLS_SNOOP_OPTS
 ExecReload=/bin/kill -USR1 $MAINPID
 
 Restart=on-failure
