@@ -59,11 +59,6 @@ int tls_filter(struct __sk_buff *skb) {
     if (bpf_skb_load_bytes(skb, 12, &eth_proto, 2) < 0)
         return TC_ACT_OK;
 
-    // DEBUG: trace IPv6 packets
-    if (eth_proto == htons(ETH_P_IPV6)) {
-        bpf_trace_printk("IPv6 packet, skb->len=%d\\n", skb->len);
-    }
-
     u32 tcp_offset;
     u8 ip_proto;
 
@@ -144,10 +139,8 @@ int tls_filter(struct __sk_buff *skb) {
         }
 
         if (ip_proto != IPPROTO_TCP) {
-            bpf_trace_printk("IPv6: not TCP, proto=%d\\n", ip_proto);
             return TC_ACT_OK;
         }
-        bpf_trace_printk("IPv6: TCP found at offset %d\\n", tcp_offset);
 
     } else {
         return TC_ACT_OK;
@@ -167,8 +160,6 @@ int tls_filter(struct __sk_buff *skb) {
     // PORT_FILTER_CONDITION is replaced at load time with actual port checks
     if (!(PORT_FILTER_CONDITION))
         return TC_ACT_OK;
-
-    bpf_trace_printk("TLS port match: %d -> %d\\n", src_port, dst_port);
 
     // Read TCP data offset (upper 4 bits of byte 12)
     u8 tcp_doff_byte;
@@ -204,10 +195,8 @@ int tls_filter(struct __sk_buff *skb) {
     // Check handshake type is Client Hello (0x01) or Server Hello (0x02)
     if (handshake_type != TLS_HANDSHAKE_CLIENT_HELLO &&
         handshake_type != TLS_HANDSHAKE_SERVER_HELLO) {
-        bpf_trace_printk("TLS: not hello, type=0x%x\\n", handshake_type);
         return TC_ACT_OK;
     }
-    bpf_trace_printk("TLS Hello: type=0x%x ver=0x%x%x\\n", handshake_type, version_major, version_minor);
 
     // Calculate payload length to capture (TLS record header + content)
     u32 tls_total_len = 5 + record_len;
