@@ -55,8 +55,11 @@ make run
 # Listen on all interfaces, port 443 (default)
 sudo tls-snoop
 
-# Listen on a specific interface
+# Listen on one interface
 sudo tls-snoop eth0
+
+# Listen on multiple interfaces
+sudo tls-snoop eth0 eth1
 
 # Monitor multiple ports
 sudo tls-snoop --port 443 --port 8443
@@ -75,7 +78,7 @@ sudo tls-snoop --quiet --json /var/log/tls-snoop/output.jsonl
 
 | Option | Description |
 |--------|-------------|
-| `INTERFACE` | Network interface to monitor (default: all interfaces) |
+| `INTERFACE...` | One or more network interfaces to monitor (default: all interfaces) |
 | `--port, -P` | Port to capture TLS traffic on (repeatable, default: 443) |
 | `--json, -j` | Write JSON transactions to file (NDJSON format) |
 | `--pidfile, -p` | Write PID to file for daemon management |

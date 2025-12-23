@@ -70,7 +70,11 @@ class TCAttachment:
         self.interface = interface
         self.ipr = IPRoute()
         self.ifindex = self.ipr.link_lookup(ifname=interface)[0]
-        self._attached = False
+        self._qdisc_created = False
+        self._ingress_parent = "ffff:fff2"
+        self._egress_parent = "ffff:fff3"
+        self._ingress_handle = ":1"
+        self._egress_handle = ":2"
 
     def attach(self) -> None:
         """Attach BPF to TC ingress and egress."""
@@ -79,49 +83,63 @@ class TCAttachment:
         # Add clsact qdisc (supports both ingress and egress)
         try:
             self.ipr.tc("add", "clsact", self.ifindex)
+            self._qdisc_created = True
         except Exception:
-            # Might already exist
-            pass
+            # Might already exist; we'll skip deleting it on detach
+            self._qdisc_created = False
 
-        # Attach to ingress
-        self.ipr.tc(
-            "add-filter",
-            "bpf",
-            self.ifindex,
-            ":1",
-            fd=fn.fd,
-            name=fn.name,
-            parent="ffff:fff2",  # ingress
-            classid=1,
-            direct_action=True,
-        )
+        try:
+            # Attach to ingress
+            self.ipr.tc(
+                "add-filter",
+                "bpf",
+                self.ifindex,
+                self._ingress_handle,
+                fd=fn.fd,
+                name=fn.name,
+                parent=self._ingress_parent,
+                classid=1,
+                direct_action=True,
+            )
 
-        # Attach to egress
-        self.ipr.tc(
-            "add-filter",
-            "bpf",
-            self.ifindex,
-            ":1",
-            fd=fn.fd,
-            name=fn.name,
-            parent="ffff:fff3",  # egress
-            classid=1,
-            direct_action=True,
-        )
+            # Attach to egress
+            self.ipr.tc(
+                "add-filter",
+                "bpf",
+                self.ifindex,
+                self._egress_handle,
+                fd=fn.fd,
+                name=fn.name,
+                parent=self._egress_parent,
+                classid=1,
+                direct_action=True,
+            )
 
-        self._attached = True
+        except Exception:
+            # Clean up any partial attachment before bubbling up
+            self.detach()
+            raise
 
     def detach(self) -> None:
         """Remove TC attachment."""
-        if not self._attached:
-            return
+        # Remove filters first (safe to call even if not attached)
+        for parent, handle in (
+            (self._ingress_parent, self._ingress_handle),
+            (self._egress_parent, self._egress_handle),
+        ):
+            try:
+                self.ipr.tc("del-filter", "bpf", self.ifindex, handle, parent=parent)
+            except Exception:
+                pass
 
-        try:
-            self.ipr.tc("del", "clsact", self.ifindex)
-        except Exception:
-            pass
+        # Only remove the qdisc if we created it to avoid tearing down a pre-existing clsact
+        if self._qdisc_created:
+            try:
+                self.ipr.tc("del", "clsact", self.ifindex)
+            except Exception:
+                pass
 
-        self._attached = False
+        self._qdisc_created = False
 
     def close(self) -> None:
         """Clean up resources."""
@@ -156,6 +174,7 @@ class MultiTCAttachment:
         if iface in self._attached_interfaces:
             return False
 
+        tc: TCAttachment | None = None
         try:
             tc = TCAttachment(self.bpf, iface)
             tc.attach()
@@ -163,6 +182,11 @@ class MultiTCAttachment:
             self._attached_interfaces.add(iface)
             return True
         except Exception:
+            if tc:
+                try:
+                    tc.close()
+                except Exception:
+                    pass
             return False
 
     def refresh(self) -> list[str]:

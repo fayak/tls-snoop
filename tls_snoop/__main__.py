@@ -39,7 +39,7 @@ def _handle_sigusr1(signum: int, frame) -> None:
 
 
 @click.command()
-@click.argument("interface", default=None, required=False)
+@click.argument("interfaces", nargs=-1)
 @click.option(
     "--port",
     "-P",
@@ -86,7 +86,7 @@ def _handle_sigusr1(signum: int, frame) -> None:
     help="Port for metrics server.",
 )
 def main(
-    interface: str | None,
+    interfaces: tuple[str, ...],
     ports: tuple[int, ...],
     json_file: Path | None,
     pidfile: Path | None,
@@ -97,7 +97,7 @@ def main(
 ) -> None:
     """Capture TLS handshakes using eBPF.
 
-    INTERFACE is the network interface to monitor. If not specified, listens on
+    INTERFACES are the network interfaces to monitor. If none are specified, listens on
     all interfaces (and auto-attaches to new interfaces on SIGUSR1).
     """
     global _tracker, _tc
@@ -111,15 +111,15 @@ def main(
     set_quiet_mode(quiet)
 
     # Determine interfaces to monitor
-    if interface:
-        interfaces = [interface]
-        iface_str = interface
+    if interfaces:
+        iface_list = list(interfaces)
+        iface_str = ", ".join(interfaces)
         auto_detect = False
     else:
-        interfaces = get_all_interfaces()
-        if not interfaces:
+        iface_list = get_all_interfaces()
+        if not iface_list:
             raise click.ClickException("No network interfaces found")
-        iface_str = ", ".join(interfaces)
+        iface_str = ", ".join(iface_list)
         auto_detect = True
 
     ports_str = ", ".join(str(p) for p in ports)
@@ -170,7 +170,7 @@ def main(
 
     # Attach to TC (ingress and egress) for full visibility
     # Use None for auto-detect mode to enable refresh on SIGUSR1
-    tc = MultiTCAttachment(bpf, None if auto_detect else interfaces)
+    tc = MultiTCAttachment(bpf, None if auto_detect else iface_list)
     _tc = tc
 
     try:
